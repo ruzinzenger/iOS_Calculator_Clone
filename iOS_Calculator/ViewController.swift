@@ -9,7 +9,7 @@ import UIKit
 
 class ViewController: UIViewController {
 
-    
+    // user interaction enabled
     @IBOutlet weak var outputLabel: UILabel!
     
     @IBOutlet weak var acButton: UIButton!
@@ -24,6 +24,7 @@ class ViewController: UIViewController {
     
     @IBOutlet weak var addButton: UIButton!
     
+    // numbers in this array should be unformatted (no commas)
     var expression : [String] = []
     
     // if last operation performed was 'equals'
@@ -42,10 +43,23 @@ class ViewController: UIViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         outputLabel.text = "0"
-        
+        print("start")
         //print(Double("-2.0")! * 2.0)
         
+        let swipeGestureRecognizerRight = UISwipeGestureRecognizer(target: self, action: #selector(didSwipe(_:)))
+        swipeGestureRecognizerRight.direction = .right
         
+        let swipeGestureRecognizerLeft = UISwipeGestureRecognizer(target: self, action: #selector(didSwipe(_:)))
+        swipeGestureRecognizerRight.direction = .left
+        
+        outputLabel.addGestureRecognizer(swipeGestureRecognizerRight)
+        outputLabel.addGestureRecognizer(swipeGestureRecognizerLeft)
+        
+    }
+    
+    
+    @objc private func didSwipe(_ sender: UISwipeGestureRecognizer) {
+        print("swiped on label")
     }
 
     
@@ -66,7 +80,7 @@ class ViewController: UIViewController {
         
     }
     
-    
+    // TODO
     @IBAction func percentButton(_ sender: Any) {
         if var input_num = Double(outputLabel.text!){
             input_num /= 100
@@ -223,6 +237,8 @@ class ViewController: UIViewController {
     // helper function for operations that are commonly performed when a button
     // representing a non zero digit is clicked by user
     func number_click(digit : String){
+        operators_color_change(id: 4)
+        
         // special cases
         if outputLabel.text! == "0"{
             outputLabel.text! = digit
@@ -370,8 +386,11 @@ class ViewController: UIViewController {
     }
     
     
-    // if the user inputs a number that ends with a '.', the '.' will be removed
-    // as it doesn't contribute to the number and causes errors down the line
+
+    // turns the current input in the label into a real calculator friendly format
+    // of type Double
+    // takes care of misplaced "." at the end of the input if there is one
+    // takes care of commas
     func doublify_input() -> Double{
         var cur : String = outputLabel.text!
         if cur.last == "."{
@@ -394,7 +413,11 @@ class ViewController: UIViewController {
     }
     
     
-    
+    // evaluates the current expression array and returns the result as a String
+    // the reason for String type return is that the result can also be an error message
+    // it is important to notice that even though the return type is String, this output
+    // is not ready for display (it has to be formatted), it is just a String version of
+    // the raw Double result
     func evaluate() -> String{
         if(expression.count == 1){
             return expression[0]
@@ -507,7 +530,7 @@ class ViewController: UIViewController {
             // truncation needed
             if num_decimals(lbl: s) == 0{
                 // very large number
-                // todo
+                // TODO
                 return s
             }else{
                 // small number with a lot of decimal places
@@ -556,6 +579,7 @@ class ViewController: UIViewController {
     func operator_clicked(){
         
         if operation_clicked_last{
+            // user changed their mind about the current operation
             expression.removeLast()
         }else{
             
@@ -563,9 +587,11 @@ class ViewController: UIViewController {
             expression.append(String(latest_input))
         }
         
+        // calculate the result of the current expression (doesn't include our current operator since the next value for that hasn't been entered yet)
+        // the display has to change to reflect the result of the expression so far
         let current_result : String = evaluate()
         
-        
+        // if the current expression results in an error, wipe it clean and exit
         if current_result == "Error"{
             outputLabel.text = "Error"
             expression = []
