@@ -24,12 +24,12 @@ class ViewController: UIViewController {
     
     @IBOutlet weak var addButton: UIButton!
     
-    // numbers in this array should be unformatted (no commas)
+    // numbers in this array should be convertable to Double (no commas)
     var expression : [String] = []
     
     // if last operation performed was 'equals'
     // if that is the case, and a number is clicked, the new number replaces the current number in the label
-    var equals_done : Bool = true
+    var equals_done : Bool = false
     
     // if last clicked button was an operation of some kind, then clicking a number
     // will reset the output label
@@ -55,11 +55,42 @@ class ViewController: UIViewController {
         outputLabel.addGestureRecognizer(swipeGestureRecognizerRight)
         outputLabel.addGestureRecognizer(swipeGestureRecognizerLeft)
         
+        
+        print(format_result(s: "9123456"))
+        
+        print(890.0 - 890.0)
+        
     }
     
     
     @objc private func didSwipe(_ sender: UISwipeGestureRecognizer) {
-        print("swiped on label")
+        if let cur = outputLabel.text{
+            if cur == "0"{
+                return
+            }
+            if cur.count == 1 || cur == "-0"{
+                outputLabel.text = "0"
+            }else if cur.count == 2 && cur.first == "-"{
+                outputLabel.text = "-0"
+            }else{
+                if num_decimals(lbl: cur) != 0{
+                    outputLabel.text = String(cur.dropLast())
+                }else{
+
+                    var s : String = String(cur.dropLast())
+
+
+                    
+                    s = format_result(s: String(doublify_input(s: s)))
+
+                    outputLabel.text = s
+                }
+                
+            }
+            
+            
+        }
+        
     }
 
     
@@ -163,7 +194,7 @@ class ViewController: UIViewController {
             outputLabel.text = "0."
         }else{
             let cur : String = outputLabel.text!
-            if !below_length_limit(num: cur){
+            if count_digits(num: cur) >= 9{
                 return
             }
             if num_decimals(lbl: cur) == 0{
@@ -242,39 +273,35 @@ class ViewController: UIViewController {
         // special cases
         if outputLabel.text! == "0"{
             outputLabel.text! = digit
+            return
         }else if outputLabel.text! == "-0"{
             outputLabel.text = "-" + digit
+            return
         }
         
         
         if equals_done || operation_clicked_last || percent_clicked_last{
             outputLabel.text = digit
+            print(equals_done)
+            print(operation_clicked_last)
+            print(percent_clicked_last)
             
         }else{
             
-            if(!below_length_limit(num: outputLabel.text!)){
-                // input can not have more than 9 decimal places (+ 2 for , or .)
+            if(count_digits(num: outputLabel.text!) >= 9){
+                // input can not have more than 9 digits
                 return
             }
             
             var current : String = outputLabel.text!
-    
-            // add ',' if necessary
-            if num_decimals(lbl: current) == 0 && current.count >= 3{
-                var num_digits = 0
-                
-                for ch in current{
-                    if ch != "," && ch != "." && ch != "-"{
-                        num_digits += 1
-                    }
-                }
-                
-                if num_digits % 3 == 0{
-                    current += ","
-                }
-                
-            }
-            outputLabel.text! = current + digit
+            print("1: \(current)")
+            current += digit
+            print("2: \(current)")
+            print("3: \(String(doublify_input(s: current)))")
+            current = format_result(s: String(doublify_input(s: current)))
+            print("4: \(current)")
+            
+            outputLabel.text! = current
         }
         
         equals_done = false
@@ -298,19 +325,25 @@ class ViewController: UIViewController {
     
     // helper function that determines whether a string's length would fit the
     // label length criteria
-    func below_length_limit(num : String) -> Bool{
+    func count_digits(num : String) -> Int{
         if num.count == 0{
-            return true
+            return 0
         }
         
-        if num.first == "-" && num.count < 12{
-            return true
-        }else if num.first != "-" && num.count < 11{
-            return true
+        var num_digits : Int = 0
+        
+        for ch in num{
+            if ch != "," && ch != "." && ch != "-"{
+                num_digits += 1
+            }
         }
         
-        return false
+        return num_digits
+        
+
+        
     }
+
     
     
     // id values: Division = 0, Multiplication = 1, Subtraction = 2, Addition = 3, Equals = 4
@@ -391,8 +424,8 @@ class ViewController: UIViewController {
     // of type Double
     // takes care of misplaced "." at the end of the input if there is one
     // takes care of commas
-    func doublify_input() -> Double{
-        var cur : String = outputLabel.text!
+    func doublify_input(s : String) -> Double{
+        var cur = s
         if cur.last == "."{
             cur.removeLast()
         }
@@ -525,8 +558,17 @@ class ViewController: UIViewController {
     
     
     func format_result(s : String) -> String{
-        let num : Double = Double(s)!
-        if s.count > 9{
+        print("here: \(s)")
+        var s = s
+        // remove .0 at the end if it's present
+        if s.suffix(2) == ".0"{
+            s.removeLast()
+            s.removeLast()
+        }
+        
+        
+        if count_digits(num: s) > 9{
+            let num : Double = Double(s)!
             // truncation needed
             if num_decimals(lbl: s) == 0{
                 // very large number
@@ -540,34 +582,41 @@ class ViewController: UIViewController {
             
         }else{
             // add commas if needed
-            // remove .0 at the end if it's present
             var s_commas : String = ""
+            
+            let is_neg : Bool = s.first == "-"
+            
+            if is_neg{
+                s.removeFirst()
+            }
             
             var decimal_found : Bool = false
             var decimal_places_counter : Int = 0
             
-            for ch in s{
-                s_commas += String(ch)
+            for ch in s.reversed(){
+                s_commas = String(ch) + s_commas
                 
                 if ch == "."{
                     decimal_found = true
                 }
-                    
-                if !decimal_found && decimal_places_counter == 3{
-                    s_commas += ","
-                    decimal_places_counter = 0
-                }
-                    
+                
                 if ch != "-" && ch != "."{
                     decimal_places_counter += 1
                 }
-                
+                    
+                if !decimal_found && decimal_places_counter == 3{
+                    s_commas = "," + s_commas
+                    decimal_places_counter = 0
+                }
                 
             }
             
-            if s_commas.count >= 2 && s_commas.suffix(2) == ".0"{
-                s_commas.removeLast()
-                s_commas.removeLast()
+            if s_commas.first == ","{
+                s_commas.removeFirst()
+            }
+            
+            if is_neg{
+                s_commas = "-" + s_commas
             }
             
             return s_commas
@@ -583,7 +632,7 @@ class ViewController: UIViewController {
             expression.removeLast()
         }else{
             
-            let latest_input : Double = doublify_input()
+            let latest_input : Double = doublify_input(s: outputLabel.text!)
             expression.append(String(latest_input))
         }
         
