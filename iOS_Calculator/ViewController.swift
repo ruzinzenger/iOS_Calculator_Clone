@@ -37,6 +37,8 @@ class ViewController: UIViewController {
     
     var percent_clicked_last : Bool = false
     
+    var ac_clicked_last : Bool = false
+    
 
     
     override func viewDidLoad() {
@@ -56,9 +58,9 @@ class ViewController: UIViewController {
         outputLabel.addGestureRecognizer(swipeGestureRecognizerLeft)
         
         
-        print(format_result(s: "9123456"))
+        //print(format_result(s: "9123456"))
         
-        print(890.0 - 890.0)
+        //print(890.0 - 890.0)
         
     }
     
@@ -79,23 +81,28 @@ class ViewController: UIViewController {
 
                     var s : String = String(cur.dropLast())
 
-
-                    
                     s = format_result(s: String(doublify_input(s: s)))
 
                     outputLabel.text = s
                 }
-                
             }
-            
-            
         }
-        
     }
 
-    
+    // todo: add ac_clicked_last = false to relevant methods
     @IBAction func acButtonClick(_ sender: Any) {
-        // todo
+        acButton.setTitle("AC", for: UIControl.State.normal)
+        outputLabel.text = "0"
+        if ac_clicked_last{
+            expression = []
+            equals_done = false
+            operation_clicked_last = false
+            percent_clicked_last = false
+            operators_color_change(id: 4)
+        }else{
+            ac_clicked_last = true
+        }
+        
         
     }
     
@@ -180,6 +187,41 @@ class ViewController: UIViewController {
         operators_color_change(id: 4)
         
         // todo
+        
+        if equals_done{
+            // re-do last operation on current result
+            assert(expression.count >= 2)
+            let len : Int = expression.count
+            let last_operation : String = expression[len-2]
+            let last_number : String = expression[len-1]
+            expression = []
+            
+            let latest_input : Double = doublify_input(s: outputLabel.text!)
+            expression.append(String(latest_input))
+            expression.append(last_operation)
+            expression.append(last_number)
+            
+            
+            
+            
+        }else{
+            // evaluate entire expression
+            let latest_input : Double = doublify_input(s: outputLabel.text!)
+            expression.append(String(latest_input))
+            
+        }
+        
+        let result : String = evaluate()
+        
+        // if the current expression results in an error, wipe it clean and exit
+        if result == "Error"{
+            outputLabel.text = "Error"
+            expression = []
+            return
+        }
+        
+        let result_formatted : String = format_result(s : result)
+        outputLabel.text = result_formatted
         
         equals_done = true
         operation_clicked_last = false
@@ -269,6 +311,7 @@ class ViewController: UIViewController {
     // representing a non zero digit is clicked by user
     func number_click(digit : String){
         operators_color_change(id: 4)
+        acButton.setTitle("C", for: UIControl.State.normal)
         
         // special cases
         if outputLabel.text! == "0"{
@@ -282,9 +325,7 @@ class ViewController: UIViewController {
         
         if equals_done || operation_clicked_last || percent_clicked_last{
             outputLabel.text = digit
-            print(equals_done)
-            print(operation_clicked_last)
-            print(percent_clicked_last)
+
             
         }else{
             
@@ -294,13 +335,10 @@ class ViewController: UIViewController {
             }
             
             var current : String = outputLabel.text!
-            print("1: \(current)")
             current += digit
-            print("2: \(current)")
-            print("3: \(String(doublify_input(s: current)))")
+
             current = format_result(s: String(doublify_input(s: current)))
-            print("4: \(current)")
-            
+
             outputLabel.text! = current
         }
         
@@ -558,7 +596,6 @@ class ViewController: UIViewController {
     
     
     func format_result(s : String) -> String{
-        print("here: \(s)")
         var s = s
         // remove .0 at the end if it's present
         if s.suffix(2) == ".0"{
@@ -630,10 +667,16 @@ class ViewController: UIViewController {
         if operation_clicked_last{
             // user changed their mind about the current operation
             expression.removeLast()
-        }else{
+        }else if equals_done{
+            let latest_output : Double = doublify_input(s: outputLabel.text!)
+            expression = []
+            expression.append(String(latest_output))
+            return
             
+        }else{
             let latest_input : Double = doublify_input(s: outputLabel.text!)
             expression.append(String(latest_input))
+            
         }
         
         // calculate the result of the current expression (doesn't include our current operator since the next value for that hasn't been entered yet)
